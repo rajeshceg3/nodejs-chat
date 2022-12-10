@@ -101,19 +101,20 @@ function getUserDetails(username){
   return users.get(username);
 }
 
-app.post('login',(req,res)=>{
-  const username = req.body.username;
-  const password = req.body.password;
-
+function credentialsvalid(username, password){
   if ( !users.has(username)){
     res.status(401).send(`User ${username} is not registered`);
     return;
   }
 
+  // Get the stored details, in prod it will be read from db 
   const userdetails = getUserDetails(username);
-  const passwordValid = bcrypt.compareSync(password, userdetails.password);
+  return bcrypt.compareSync(password, userdetails.password);
+}
 
-  if(!passwordValid){
+
+app.post('login',(req,res)=>{
+  if(credentialsvalid(req.body.username, req.body.password)){
     res.json({
       success: false,
       message : " Incorrect credentials"
@@ -127,5 +128,4 @@ app.post('login',(req,res)=>{
       token : token
     })
   }
-
   })
