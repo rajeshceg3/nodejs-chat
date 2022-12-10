@@ -5,18 +5,24 @@ const session = require('express-session')
 const bcrypt = require('bcryptjs')
 const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
+const jwtSecret = 'jwt-secret-code';
 const PORT = 3000
 
 const app = express()
 app.use(bodyParser.urlencoded({extended:false}))
-app.use(session({ secret : 'secret-key'}))
+app.use(session({ 
+  secret : 'secret-key',
+  resave : false,
+  saveUninitialized : false
+}))
+
 app.use(passport.initialize())
 app.use(passport.session())
 
 // Set up a temporary store for user data
 // Later we'll hook it up to db
 const users = new Map();
-const jwtSecret = 'jwt-secret-code';
+
 
 // Initialize the server
 const server = app.listen(PORT, ()=>{
@@ -114,7 +120,8 @@ app.post('login',(req,res)=>{
     })
   }
   else{
-    const token = jwt.sign({username:userdetails.username}, 'Secret-key');
+    const token = jwt.sign({username:userdetails.username}, jwtSecret);
+    req.session.token = token;
     res.json({
       success: true,
       token : token
