@@ -30,13 +30,25 @@ const server = app.listen(PORT, ()=>{
 })
 
 // Collect username and password and validate it
-app.get('/', (req, res) => {
+app.get('/login', (req, res) => {
   res.send(`
     <h1>Super Fast chat </h1>
-    <form action="/login" method="post">
+    <form action="/loginAPI" method="post">
       <input type="text" name="username" placeholder="Username" required />
       <input type="password" name="password" placeholder="Password" required />
       <button type="submit">Login</button>
+    </form>
+  `);
+});
+
+// Provide a form for user registration 
+app.get('/register', (req, res) => {
+  res.send(`
+    <h1>Super Fast chat </h1>
+    <form action="/registerAPI" method="post">
+      <input type="text" name="username" placeholder="Username" required />
+      <input type="password" name="password" placeholder="Password" required />
+      <button type="submit">Create Account</button>
     </form>
   `);
 });
@@ -71,13 +83,13 @@ io.on('connection', ( socket)=>{
   })
 })
 
-app.post('/register',(req,res)=>{
+app.post('/registerAPI',(req,res)=>{
 
   const username = req.body.username;
   const password = req.body.password;
 
   if(users.has(username)){
-    res.status(409).send("Provided username is not available");
+    res.status(409).send("Provided username is already taken");
     return;
   }
 
@@ -101,27 +113,27 @@ function getUserDetails(username){
   return users.get(username);
 }
 
-function credentialsvalid(username, password){
+function credentialsvalid(username, password,res){
   if ( !users.has(username)){
     res.status(401).send(`User ${username} is not registered`);
     return;
   }
-
+  console.log(username)
   // Get the stored details, in prod it will be read from db 
   const userdetails = getUserDetails(username);
   return bcrypt.compareSync(password, userdetails.password);
 }
 
 
-app.post('login',(req,res)=>{
-  if(credentialsvalid(req.body.username, req.body.password)){
+app.post('/loginAPI',(req,res)=>{
+  if(!credentialsvalid(req.body.username, req.body.password,res)){
     res.json({
       success: false,
       message : " Incorrect credentials"
     })
   }
   else{
-    const token = jwt.sign({username:userdetails.username}, jwtSecret);
+    const token = jwt.sign({username:getUserDetails(req.body.username).username}, jwtSecret);
     req.session.token = token;
     res.json({
       success: true,
