@@ -5,11 +5,13 @@ const session = require('express-session')
 const bcrypt = require('bcryptjs')
 const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
+const path = require('path')
 const jwtSecret = 'jwt-secret-code';
 const PORT = 3000
 
 const app = express()
 app.use(bodyParser.urlencoded({extended:false}))
+//app.use(express.static('pages'));
 app.use(session({ 
   secret : 'secret-key',
   resave : false,
@@ -118,7 +120,7 @@ function credentialsvalid(username, password,res){
     res.status(401).send(`User ${username} is not registered`);
     return;
   }
-  console.log(username)
+
   // Get the stored details, in prod it will be read from db 
   const userdetails = getUserDetails(username);
   return bcrypt.compareSync(password, userdetails.password);
@@ -135,9 +137,14 @@ app.post('/loginAPI',(req,res)=>{
   else{
     const token = jwt.sign({username:getUserDetails(req.body.username).username}, jwtSecret);
     req.session.token = token;
+
+    /*
     res.json({
       success: true,
       token : token
-    })
+    });*/
+    
+   res.sendFile(path.resolve(`${__dirname}/index.html`));
+ 
   }
   })
