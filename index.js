@@ -11,7 +11,6 @@ const PORT = 3000
 
 const app = express()
 app.use(bodyParser.urlencoded({extended:false}))
-//app.use(express.static('pages'));
 app.use(session({ 
   secret : 'secret-key',
   resave : false,
@@ -58,28 +57,29 @@ app.get('/register', (req, res) => {
 // Initialize socket io
 const io = socketio(server);
 
-
-io.on('connection', ( socket)=>{
+// Server listens for the clients to connect using connection event
+io.on('connection', ( clientSocket)=>{
+  // Once a client connects, its info will be available in the socket
   passport.authenticate('jwt',{ session: false}, ( err, user)=>{
     if ( err || !user ){
-      socket.emit('error', "User not authenticated");
+      clientSocket.emit('error', "User not authenticated");
       return;
     }
 
     console.log(`${user.username} is authenticated and logged in`);
     
   // Received a messaged from connected client
-  socket.on('message',(message)=>{
+  clientSocket.on('message',(message)=>{
     console.log(`Message received from ${user.username} is ${message}`)
   })
 
   // Send a broadcast to others
-  socket.broadcast.emit('message', {
+  clientSocket.broadcast.emit('message', {
     user : user.username,
     message: message
   })
 
-  socket.on('disconnect',()=>{
+  clientSocket.on('disconnect',()=>{
     console.log(`${user.username} is now disconnected`);
   })
   })
@@ -138,13 +138,10 @@ app.post('/loginAPI',(req,res)=>{
     const token = jwt.sign({username:getUserDetails(req.body.username).username}, jwtSecret);
     req.session.token = token;
 
-    /*
+    
     res.json({
       success: true,
       token : token
-    });*/
-    
-   res.sendFile(path.resolve(`${__dirname}/index.html`));
- 
+    }); 
   }
   })
