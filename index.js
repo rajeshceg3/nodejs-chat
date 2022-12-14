@@ -136,9 +136,6 @@ app.post('/loginAPI',(req,res)=>{
   }
   else{
     const token = jwt.sign({username:getUserDetails(req.body.username).username}, jwtSecret);
-    req.session.token = token;
-
-    
     res.json({
       success: true,
       token : token
