@@ -7,7 +7,7 @@ const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
 const path = require('path')
 const jwtSecret = 'jwt-secret-code';
-const PORT = 3000
+const PORT = process.env.PORT || 3000
 
 const app = express()
 app.use(bodyParser.urlencoded({extended:false}))
@@ -58,32 +58,24 @@ app.get('/register', (req, res) => {
 const io = socketio(server);
 
 // Server listens for the clients to connect using connection event
-io.on('connection', ( clientSocket)=>{
-  // Once a client connects, its info will be available in the socket
-  passport.authenticate('jwt',{ session: false}, ( err, user)=>{
-    if ( err || !user ){
-      clientSocket.emit('error', "User not authenticated");
-      return;
-    }
+io.use((socket, next) => {
+  try {
+    const payload = jwt.verify(socket.handshake.auth.token, jwtSecret);
+    const user = users.get(payload.username);
+    if (!user) return next(new Error('User not authenticated'));
+    socket.data.user = user.username;
+    next();
+  } catch {
+    next(new Error('User not authenticated'));
+  }
+});
 
-    console.log(`${user.username} is authenticated and logged in`);
-    
-  // Received a messaged from connected client
-  clientSocket.on('message',(message)=>{
-    console.log(`Message received from ${user.username} is ${message}`)
-  })
-
-  // Send a broadcast to others
-  clientSocket.broadcast.emit('message', {
-    user : user.username,
-    message: message
-  })
-
-  clientSocket.on('disconnect',()=>{
-    console.log(`${user.username} is now disconnected`);
-  })
-  })
-})
+io.on('connection', (socket) => {
+  socket.on('message', (message) => {
+    if (typeof message !== 'string' || !message.trim()) return;
+    socket.broadcast.emit('message', { user: socket.data.user, message });
+  });
+});
 
 app.post('/registerAPI',(req,res)=>{
 
@@ -118,7 +110,7 @@ function getUserDetails(username){
 function credentialsvalid(username, password,res){
   if ( !users.has(username)){
     res.status(401).send(`User ${username} is not registered`);
-    return;
+    return false;
   }
 
   // Get the stored details, in prod it will be read from db 
@@ -129,7 +121,8 @@ function credentialsvalid(username, password,res){
 
 app.post('/loginAPI',(req,res)=>{
   if(!credentialsvalid(req.body.username, req.body.password,res)){
-    res.json({
+    if (res.headersSent) return;
+    res.status(401).json({
       success: false,
       message : " Incorrect credentials"
     })
